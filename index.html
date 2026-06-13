@@ -507,6 +507,14 @@
 
     </main>
 
+    <!-- Footer Banner with Signature -->
+    <footer class="max-w-7xl mx-auto px-4 w-full mt-12 mb-6 text-center text-xs text-slate-500 font-sans">
+        <div class="py-6 border-t border-glassBorder">
+            <p>Made with ❤️ by <a href="https://www.reddit.com/user/1ndoReX/" target="_blank" rel="noopener noreferrer" class="text-violet-400 hover:text-cyan-400 transition-colors duration-200 font-semibold">u/1ndoRex</a></p>
+            <p class="text-[10px] text-slate-600 mt-1">&copy; 2026 JoSAA Rank Predictor System. All rights reserved.</p>
+        </div>
+    </footer>
+
     <!-- App State Controller JavaScript -->
     <script>
         // Global Datasets State
@@ -1308,6 +1316,7 @@
             }
         }
 
+        // Table controls
         function nextPage() {
             const maxPage = Math.ceil(filteredData.length / rowsPerPage);
             if (currentPage < maxPage) {
