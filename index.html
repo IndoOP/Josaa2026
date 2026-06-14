@@ -934,24 +934,40 @@ const App = {
     this.applyFullFilters();
   },
 
-  populateFullFilterOptions() {
-    const institutes = new Set(), categories = new Set(), quotas = new Set(), genders = new Set();
-    this.fullDataset.forEach(r => {
-      institutes.add(r.institute);
-      categories.add(r.seatType);
-      quotas.add(r.quota);
-      genders.add(r.gender);
-    });
+  populateFullFilterOptions(activeFilters = {}) {
+    const { type, institute, category, quota, gender } = activeFilters;
+
+    // For each dropdown, compute its option set from rows matching every OTHER active filter
+    // (cascading: e.g. Institute Type narrows Institute Name, but not vice versa for itself).
+    const computeSet = (excludeKey) => {
+      const set = new Set();
+      this.fullDataset.forEach(r => {
+        if (excludeKey !== 'type' && type && r.instituteType !== type) return;
+        if (excludeKey !== 'institute' && institute && r.institute !== institute) return;
+        if (excludeKey !== 'category' && category && r.seatType !== category) return;
+        if (excludeKey !== 'quota' && quota && r.quota !== quota) return;
+        if (excludeKey !== 'gender' && gender && r.gender !== gender) return;
+        if (excludeKey === 'institute') set.add(r.institute);
+        else if (excludeKey === 'category') set.add(r.seatType);
+        else if (excludeKey === 'quota') set.add(r.quota);
+        else if (excludeKey === 'gender') set.add(r.gender);
+      });
+      return set;
+    };
+
     const fill = (id, set, placeholder) => {
       const el = document.getElementById(id);
       const prev = el.value;
       el.innerHTML = `<option value="">${placeholder}</option>` + [...set].sort().map(v=>`<option value="${v.replace(/"/g,'&quot;')}">${v}</option>`).join('');
+      // Retain previous selection only if still valid under the new (narrowed) option set
       if (set.has(prev)) el.value = prev;
+      else el.value = '';
     };
-    fill('full-filter-institute', institutes, 'All Institutes');
-    fill('full-filter-category', categories, 'All Categories');
-    fill('full-filter-quota', quotas, 'All Quotas');
-    fill('full-filter-gender', genders, 'All Genders');
+
+    fill('full-filter-institute', computeSet('institute'), 'All Institutes');
+    fill('full-filter-category', computeSet('category'), 'All Categories');
+    fill('full-filter-quota', computeSet('quota'), 'All Quotas');
+    fill('full-filter-gender', computeSet('gender'), 'All Genders');
   },
 
   setFullRowsPerPage() {
@@ -980,12 +996,22 @@ const App = {
     const gender = document.getElementById('full-filter-gender').value;
     const sortBy = document.getElementById('full-sort').value;
 
+    // Cascade: refresh dependent dropdown options based on current selections,
+    // so e.g. selecting Institute Type = IIT narrows Institute Name to IITs only.
+    this.populateFullFilterOptions({ type, institute, category, quota, gender });
+
+    // Re-read in case populateFullFilterOptions cleared an invalid selection
+    const institute2 = document.getElementById('full-filter-institute').value;
+    const category2 = document.getElementById('full-filter-category').value;
+    const quota2 = document.getElementById('full-filter-quota').value;
+    const gender2 = document.getElementById('full-filter-gender').value;
+
     let rows = this.fullDataset.filter(r => {
       if (type && r.instituteType !== type) return false;
-      if (institute && r.institute !== institute) return false;
-      if (category && r.seatType !== category) return false;
-      if (quota && r.quota !== quota) return false;
-      if (gender && r.gender !== gender) return false;
+      if (institute2 && r.institute !== institute2) return false;
+      if (category2 && r.seatType !== category2) return false;
+      if (quota2 && r.quota !== quota2) return false;
+      if (gender2 && r.gender !== gender2) return false;
       if (search) {
         const hay = `${r.instituteType} ${r.institute} ${r.program} ${r.quota} ${r.seatType} ${r.gender}`.toLowerCase();
         if (!FilterEngine.fuzzyMatch(hay, search)) return false;
@@ -1002,7 +1028,7 @@ const App = {
     this.fullFiltered = rows;
     this.fullPage = 1;
     document.getElementById('full-table-count').textContent = `${rows.length.toLocaleString()} rows`;
-    this.renderFullFilterTags({ type, institute, category, quota, gender });
+    this.renderFullFilterTags({ type, institute: institute2, category: category2, quota: quota2, gender: gender2 });
     this.renderFullTable();
   },
 
