@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JoSAA 2026 Rank Predictor — All Institutes</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  body{background:#090d16;background-image:radial-gradient(at 0% 0%,rgba(139,92,246,.15) 0,transparent 50%),radial-gradient(at 100% 100%,rgba(6,182,212,.15) 0,transparent 50%);background-attachment:fixed;font-family:Inter,sans-serif}
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-track{background:rgba(15,23,42,.6)}
+  ::-webkit-scrollbar-thumb{background:rgba(139,92,246,.3);border-radius:4px}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(139,92,246,.6)}
+  .glass{background:rgba(17,24,39,.7);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.08)}
+  .tier-safe{border-color:rgba(16,185,129,.4)}
+  .tier-likely{border-color:rgba(139,92,246,.4)}
+  .tier-ambitious{border-color:rgba(6,182,212,.4)}
+</style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col pb-12">
+
+<header class="border-b border-white/5 bg-slate-950/60 backdrop-blur-md sticky top-0 z-40">
+  <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+    <div class="flex items-center gap-3">
+      <div class="p-2.5 bg-gradient-to-br from-violet-500 to-cyan-500 rounded-xl shadow-lg shadow-violet-500/30">
+        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path></svg>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-violet-400 via-indigo-300 to-cyan-400">JoSAA 2026 Rank Predictor</h1>
+        <p class="text-xs text-slate-400">IITs · NITs · IIITs · GFTIs — Final Round Prediction Engine</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 bg-slate-900/80 p-1 rounded-xl border border-white/5">
+      <button onclick="setCounsellingMode('IIT')" id="btn-mode-IIT" class="px-4 py-2 text-xs font-semibold rounded-lg transition-all">IIT Counselling</button>
+      <button onclick="setCounsellingMode('JEE')" id="btn-mode-JEE" class="px-4 py-2 text-xs font-semibold rounded-lg transition-all">JEE Main Counselling</button>
+      <button onclick="setCounsellingMode('TABLE')" id="btn-mode-TABLE" class="px-4 py-2 text-xs font-semibold rounded-lg transition-all">Complete Dataset</button>
+    </div>
+  </div>
+</header>
+
+<!-- Status bar -->
+<div class="max-w-7xl mx-auto px-4 w-full mt-6">
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 rounded-2xl glass shadow-lg">
+    <div>
+      <span class="text-[10px] uppercase tracking-wider text-slate-400">Dataset Engine Status</span>
+      <div id="status-engine" class="text-sm font-semibold text-rose-400 flex items-center gap-1.5 mt-1">
+        <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span> Scanning for datasets...
+      </div>
+    </div>
+    <div class="border-l border-slate-800 pl-4">
+      <span class="text-[10px] uppercase tracking-wider text-slate-400">Registry</span>
+      <div id="registry-summary" class="text-xs font-semibold text-slate-200 mt-1">No datasets registered</div>
+    </div>
+    <div class="border-l border-slate-800 pl-4">
+      <span class="text-[10px] uppercase tracking-wider text-slate-400">Combined Records</span>
+      <div id="total-records" class="text-base font-bold text-slate-200 mt-0.5">0</div>
+    </div>
+    <div class="border-l border-slate-800 pl-4 flex items-center">
+      <button onclick="App.loadDemoData()" class="text-xs py-1.5 px-3 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 rounded-lg font-medium transition w-full">⚡ Load Demo Dataset (All Types)</button>
+    </div>
+  </div>
+</div>
+
+<!-- Upload / discovery panel -->
+<main class="max-w-7xl mx-auto px-4 w-full flex-grow mt-6 grid grid-cols-1 gap-6">
+
+  <section id="upload-panel" class="glass rounded-2xl p-6 relative overflow-hidden">
+    <h2 class="text-lg font-semibold mb-1 flex items-center gap-2">
+      <span class="p-1.5 bg-violet-500/10 rounded border border-violet-500/30 text-violet-400">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+      </span> Dataset Discovery
+    </h2>
+    <p class="text-xs text-slate-400 mb-4">
+      Auto-fetching files named like <code class="text-slate-300">IIT25R1.csv</code>, <code class="text-slate-300">NIT25R6.csv</code>, <code class="text-slate-300">IIIT25R1.csv</code>, <code class="text-slate-300">GFTI25R6.csv</code> for round 1 and final round, all institute types and years.
+      If auto-fetch fails (CORS / local mode), drop CSVs below — filename pattern <code class="text-slate-300">&lt;TYPE&gt;&lt;YY&gt;R&lt;ROUND&gt;.csv</code> is parsed automatically.
+    </p>
+    <div id="discovery-grid" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4"></div>
+    <div class="relative group p-5 bg-slate-900/60 hover:bg-slate-900/80 rounded-xl border border-white/5 transition">
+      <label for="manual-upload" class="flex flex-col items-center justify-center border-2 border-dashed border-slate-700 hover:border-violet-500 rounded-lg p-6 cursor-pointer bg-slate-950/40 hover:bg-slate-950/80 transition">
+        <svg class="w-8 h-8 text-slate-500 group-hover:text-violet-400 mb-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"></path></svg>
+        <span class="text-xs text-slate-400 text-center">Drop or click to upload one or more CSVs (e.g. IIT25R1.csv, NIT26R2.csv...)</span>
+      </label>
+      <input type="file" id="manual-upload" accept=".csv" multiple class="hidden" onchange="App.handleManualUpload(this.files)">
+    </div>
+  </section>
+
+  <!-- Input form -->
+  <div id="panel-predict" class="grid grid-cols-1 gap-6">
+  <section class="glass rounded-2xl p-6">
+    <h2 class="text-lg font-semibold text-slate-100 flex items-center gap-2 mb-1">
+      <span class="p-1 bg-cyan-500/10 rounded border border-cyan-500/30 text-cyan-400">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+      </span> Your Rank Details
+    </h2>
+    <p class="text-xs text-slate-400 mb-4" id="mode-description">Currently set up for <b>IIT Counselling</b> — provide your category, CRL rank, and gender.</p>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Category (Seat Type)</label>
+        <select id="in-category" class="w-full bg-slate-950/80 border border-slate-700/80 rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-400" onchange="App.onCategoryChange()">
+          <option value="OPEN">OPEN</option>
+          <option value="EWS">EWS</option>
+          <option value="OBC-NCL">OBC-NCL</option>
+          <option value="SC">SC</option>
+          <option value="ST">ST</option>
+          <option value="OPEN-PwD">OPEN (PwD)</option>
+          <option value="EWS-PwD">EWS (PwD)</option>
+          <option value="OBC-NCL-PwD">OBC-NCL (PwD)</option>
+          <option value="SC-PwD">SC (PwD)</option>
+          <option value="ST-PwD">ST (PwD)</option>
+        </select>
+      </div>
+
+      <div id="wrap-crl">
+        <label class="block text-xs font-semibold text-slate-300 mb-1.5" id="label-crl">CRL Rank (Common Rank List)</label>
+        <input type="number" id="in-crl" placeholder="e.g. 12500" class="w-full bg-slate-950/80 border border-slate-700/80 rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-400">
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Gender</label>
+        <select id="in-gender" class="w-full bg-slate-950/80 border border-slate-700/80 rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-400">
+          <option value="Gender-Neutral">Gender-Neutral</option>
+          <option value="Female-only (including Female Supernumerary)">Female-only (incl. supernumerary)</option>
+        </select>
+      </div>
+
+      <div id="wrap-home-state" class="hidden">
+        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Home State (for HS quota)</label>
+        <input type="text" id="in-home-state" placeholder="e.g. Jharkhand" class="w-full bg-slate-950/80 border border-slate-700/80 rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-400">
+      </div>
+
+      <div id="wrap-pwd" class="hidden flex items-end pb-2.5">
+        <label class="flex items-center gap-2 text-xs text-slate-300">
+          <input type="checkbox" id="in-pwd" class="w-4 h-4 rounded bg-slate-900 border-slate-700">
+          PwD candidate
+        </label>
+      </div>
+    </div>
+
+    <button onclick="App.runPrediction()" class="mt-5 w-full md:w-auto px-6 py-3 bg-gradient-to-r from-violet-500 to-cyan-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 transition">
+      🔮 Predict My Colleges
+    </button>
+  </section>
+
+  <!-- Institute hierarchy toggle (JEE mode only) -->
+  <section id="hierarchy-panel" class="glass rounded-2xl p-4 hidden">
+    <span class="text-xs font-semibold text-slate-300 mr-3">View:</span>
+    <div class="inline-flex gap-2 flex-wrap" id="hierarchy-buttons"></div>
+  </section>
+
+  <!-- Filters & search -->
+  <section class="glass rounded-2xl p-6">
+    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4">
+      <div>
+        <h2 class="text-lg font-semibold text-slate-100">Results &amp; Target Colleges</h2>
+        <p class="text-xs text-slate-400">Grouped into SAFE / LIKELY / AMBITIOUS tiers based on predicted closing ranks.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="results-count" class="px-4 py-1.5 bg-cyan-950/80 border border-cyan-800/40 text-cyan-400 rounded-full font-bold text-xs">0 matches</span>
+        <button onclick="App.exportPredictions()" class="px-4 py-1.5 bg-slate-900 border border-slate-700/80 hover:bg-slate-800 text-slate-200 text-xs font-semibold rounded-lg transition flex items-center gap-2">
+          <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+          Export Predictions CSV
+        </button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4 bg-slate-950/40 p-4 rounded-xl border border-white/5">
+      <div class="lg:col-span-2">
+        <label class="block text-[10px] uppercase text-slate-400 mb-1">Universal Search</label>
+        <input type="text" id="filter-search" placeholder='Try "nit trichy cse" or "iiit allahabad" or "chemical"' class="w-full bg-slate-900 border border-slate-800 rounded-md px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-400" oninput="App.applyFilters()">
+      </div>
+      <div>
+        <label class="block text-[10px] uppercase text-slate-400 mb-1">Institute Type</label>
+        <select id="filter-type" class="w-full bg-slate-900 border border-slate-800 rounded-md px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-400" onchange="App.applyFilters()">
+          <option value="">All Types</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[10px] uppercase text-slate-400 mb-1">Quota</label>
+        <select id="filter-quota" class="w-full bg-slate-900 border border-slate-800 rounded-md px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-400" onchange="App.applyFilters()">
+          <option value="">All Quotas</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[10px] uppercase text-slate-400 mb-1">Branch / Program</label>
+        <select id="filter-program" class="w-full bg-slate-900 border border-slate-800 rounded-md px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-400" onchange="App.applyFilters()">
+          <option value="">All Branches</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[10px] uppercase text-slate-400 mb-1">Sort By</label>
+        <select id="filter-sort" class="w-full bg-slate-900 border border-slate-800 rounded-md px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-400" onchange="App.applyFilters()">
+          <option value="closeness">Closeness to your rank</option>
+          <option value="cr-asc">Predicted CR (low to high)</option>
+          <option value="cr-desc">Predicted CR (high to low)</option>
+          <option value="institute">Institute name</option>
+        </select>
+      </div>
+      <div class="flex items-end">
+        <label class="flex items-center gap-2 text-xs text-slate-300">
+          <input type="checkbox" id="filter-tableview" class="w-4 h-4 rounded bg-slate-900 border-slate-700" onchange="App.applyFilters()">
+          Force table view (desktop)
+        </label>
+      </div>
+    </div>
+
+    <div id="filter-tags" class="flex flex-wrap gap-2 mb-4"></div>
+
+    <!-- Results container -->
+    <div id="results-container" class="space-y-6"></div>
+  </section>
+  </div>
+
+  <!-- Complete dataset table -->
+  <div id="panel-table" class="hidden grid grid-cols-1 gap-6">
+  <section class="glass rounded-2xl p-6">
+    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4">
+      <div>
+        <h2 class="text-lg font-semibold text-slate-100">Complete Combined Dataset</h2>
+        <p class="text-xs text-slate-400">Every matched record across loaded datasets — current year (2026 R1), previous year (2025 R1 &amp; Final), and predicted 2026 final OR-CR.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="full-table-count" class="px-4 py-1.5 bg-cyan-950/80 border border-cyan-800/40 text-cyan-400 rounded-full font-bold text-xs">0 rows</span>
+        <button onclick="App.exportFullTable()" class="px-4 py-1.5 bg-slate-900 border border-slate-700/80 hover:bg-slate-800 text-slate-200 text-xs font-semibold rounded-lg transition flex items-center gap-2">
+          <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+          Export Full Table CSV
+        </button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-3 bg-slate-950/40 p-4 rounded-xl border border-white/5">
+      <div class="lg:col-span-2">
+        <label class="block text-[10px] uppercase text-slate-400 mb-1">Search</label>
+        <input type="text" id="full-search" placeholder="Institute, branch, quota..." class="w-full bg-slate-900 border border-slate-800 rounded-md px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-400" oninput="App.applyFullFilters()">
+      </div>
+      <div>
+        <label class="block text-[10px] uppercase text-slate-400 mb-1">Institute Type</label>
+        <select id="full-filter-type" class="w-full bg-slate-900 border border-slate-800 rounded-md px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-400" onchange="App.applyFullFilters()">
+          <option value="">All Types</option>
+          <option value="IIT">IIT</option>
+          <option value="NIT">NIT</option>
+          <option value="IIIT">IIIT</option>
+          <option value="GFTI">GFTI</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[10px] uppercase text-slate-400 mb-1">Sort By</label>
+        <select id="full-sort" class="w-full bg-slate-900 border border-slate-800 rounded-md px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-400" onchange="App.applyFullFilters()">
+          <option value="institute">Institute name</option>
+          <option value="pred-cr-asc">Predicted CR (low to high)</option>
+          <option value="pred-cr-desc">Predicted CR (high to low)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 mb-4 bg-slate-950/40 p-4 rounded-xl border border-white/5">
+      <div>
+        <label class="block text-[10px] uppercase text-slate-400 mb-1">Institute Name</label>
+        <select id="full-filter-institute" class="w-full bg-slate-900 border border-slate-800 rounded-md px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-400" onchange="App.applyFullFilters()">
+          <option value="">All Institutes</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[10px] uppercase text-slate-400 mb-1">Category (Seat Type)</label>
+        <select id="full-filter-category" class="w-full bg-slate-900 border border-slate-800 rounded-md px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-400" onchange="App.applyFullFilters()">
+          <option value="">All Categories</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[10px] uppercase text-slate-400 mb-1">Quota</label>
+        <select id="full-filter-quota" class="w-full bg-slate-900 border border-slate-800 rounded-md px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-400" onchange="App.applyFullFilters()">
+          <option value="">All Quotas</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[10px] uppercase text-slate-400 mb-1">Gender</label>
+        <select id="full-filter-gender" class="w-full bg-slate-900 border border-slate-800 rounded-md px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-400" onchange="App.applyFullFilters()">
+          <option value="">All Genders</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[10px] uppercase text-slate-400 mb-1">Rows per page</label>
+        <select id="full-rows-per-page" class="w-full bg-slate-900 border border-slate-800 rounded-md px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-400" onchange="App.setFullRowsPerPage()">
+          <option value="25">25</option>
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
+          <option value="200">200</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="full-filter-tags" class="flex flex-wrap gap-2 mb-4"></div>
+
+    <div id="full-table-container" class="overflow-x-auto rounded-xl border border-white/5">
+      <div class="text-center py-16 text-slate-500 text-xs">No datasets loaded yet.</div>
+    </div>
+
+    <div class="flex flex-col sm:flex-row justify-between items-center gap-4 mt-4 text-xs text-slate-400">
+      <div id="full-table-showing">Showing 0 to 0 of 0 entries</div>
+      <div class="flex items-center gap-2 bg-slate-900/80 p-1.5 border border-white/5 rounded-xl">
+        <button onclick="App.fullPrevPage()" class="p-1 px-2 hover:bg-slate-800 hover:text-white rounded text-xs transition">&larr; Prev</button>
+        <span id="full-page-number" class="p-1 px-3 bg-violet-950/60 border border-violet-800/40 rounded text-violet-300 font-bold">1</span>
+        <button onclick="App.fullNextPage()" class="p-1 px-2 hover:bg-slate-800 hover:text-white rounded text-xs transition">Next &rarr;</button>
+      </div>
+    </div>
+  </section>
+  </div>
+
+</main>
+
+<!-- Detail Modal -->
+<div id="detail-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onclick="if(event.target===this) App.closeModal()">
+  <div class="glass rounded-2xl p-6 max-w-lg w-full max-h-[85vh] overflow-y-auto relative">
+    <button onclick="App.closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg leading-none">✕</button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<footer class="max-w-7xl mx-auto px-4 w-full mt-12 mb-6 text-center text-xs text-slate-500">
+  <div class="py-6 border-t border-white/5">
+    <p>Made with ❤️ by <a href="https://www.reddit.com/user/1ndoReX/" target="_blank" rel="noopener noreferrer" class="text-violet-400 hover:text-cyan-400 font-semibold">u/1ndoRex</a></p>
+    <p class="text-[10px] text-slate-600 mt-1">&copy; 2026 JoSAA Rank Predictor System. All rights reserved.</p>
+  </div>
+</footer>
+
+<script>
+/* ============================================================
+   DatasetManager
+   - discovers, fetches, parses, caches CSVs across all
+     institute types / years / rounds via filename convention
+     <TYPE><YY>R<ROUND>.csv  e.g. NIT25R1.csv, IIT25R6.csv
+   ============================================================ */
+class DatasetManager {
+  constructor() {
+    this.registry = new Map(); // key: "TYPE-YY-R" -> { type, year, round, rows, status }
+    this.types = ['IIT','NIT','IIIT','GFTI'];
+  }
+
+  static parseFilename(name) {
+    const base = name.replace(/\.csv$/i, '');
+    const m = base.match(/^(IIT|NIT|IIIT|GFTI)(\d{2})R(\d+)$/i);
+    if (!m) return null;
+    return { type: m[1].toUpperCase(), year: '20'+m[2], round: parseInt(m[3]) };
+  }
+
+  key(meta) { return `${meta.type}-${meta.year}-R${meta.round}`; }
+
+  static normalizeRow(r) {
+    const get = (...keys) => {
+      for (const k of keys) {
+        for (const rk of Object.keys(r)) {
+          if (rk.trim().toLowerCase() === k.toLowerCase()) return (r[rk] || '').toString().trim();
+        }
+      }
+      return '';
+    };
+    const or = parseInt(get('OpeningRank','Opening_Rank','opening rank').replace(/[^0-9]/g,'')) || 0;
+    const cr = parseInt(get('ClosingRank','Closing_Rank','closing rank').replace(/[^0-9]/g,'')) || 0;
+    return {
+      institute: get('Institute'),
+      program: get('Program','Branch','AcademicProgramName'),
+      quota: get('Quota'),
+      seatType: get('SeatType','Seat_Type'),
+      gender: get('Gender'),
+      or, cr
+    };
+  }
+
+  async discoverAndFetch(onProgress) {
+    // Build candidate list: types x recent years x rounds 1..7
+    const years = ['25','26'];
+    const rounds = [1,2,3,4,5,6,7];
+    const candidates = [];
+    for (const t of this.types) for (const y of years) for (const r of rounds) {
+      candidates.push(`${t}${y}R${r}.csv`);
+    }
+    let found = 0;
+    for (const fname of candidates) {
+      try {
+        const res = await fetch(fname);
+        if (!res.ok) continue;
+        const text = await res.text();
+        const parsed = await this._parseCsvText(text);
+        if (!parsed.length) continue;
+        const meta = DatasetManager.parseFilename(fname);
+        this._register(meta, parsed);
+        found++;
+        if (onProgress) onProgress(fname, parsed.length, meta);
+      } catch(e) { /* not found / CORS, skip silently */ }
+    }
+    return found;
+  }
+
+  _parseCsvText(text) {
+    return new Promise(resolve => {
+      Papa.parse(text, {
+        header: true, skipEmptyLines: true, dynamicTyping: false,
+        complete: results => {
+          const rows = results.data.map(DatasetManager.normalizeRow).filter(r => r.institute && r.program && r.cr > 0);
+          resolve(rows);
+        },
+        error: () => resolve([])
+      });
+    });
+  }
+
+  async registerFile(file) {
+    const meta = DatasetManager.parseFilename(file.name);
+    if (!meta) return null;
+    return new Promise(resolve => {
+      Papa.parse(file, {
+        header: true, skipEmptyLines: true,
+        complete: results => {
+          const rows = results.data.map(DatasetManager.normalizeRow).filter(r => r.institute && r.program && r.cr > 0);
+          this._register(meta, rows);
+          resolve({ meta, count: rows.length });
+        },
+        error: () => resolve(null)
+      });
+    });
+  }
+
+  _register(meta, rows) {
+    this.registry.set(this.key(meta), { ...meta, rows, status: 'loaded' });
+  }
+
+  get(type, year, round) {
+    return this.registry.get(`${type}-${year}-R${round}`);
+  }
+
+  getLatestYearFor(type) {
+    let years = new Set();
+    for (const v of this.registry.values()) if (v.type === type) years.add(v.year);
+    return years.size ? Math.max(...years) : null;
+  }
+
+  getMaxRoundFor(type, year) {
+    let rounds = [];
+    for (const v of this.registry.values()) if (v.type === type && v.year == year) rounds.push(v.round);
+    return rounds.length ? Math.max(...rounds) : null;
+  }
+
+  // Returns { r1, rFinalPrevYear, r1CurrentYear } trio used for prediction per type
+  getPredictionTrio(type) {
+    const years = [...new Set([...this.registry.values()].filter(v=>v.type===type).map(v=>v.year))].sort();
+    if (years.length < 2) return null;
+    const prevYear = years[years.length-2];
+    const curYear = years[years.length-1];
+    const prevMaxRound = this.getMaxRoundFor(type, prevYear);
+    const r1Prev = this.get(type, prevYear, 1);
+    const rFinalPrev = this.get(type, prevYear, prevMaxRound);
+    const r1Cur = this.get(type, curYear, 1);
+    if (!r1Prev || !rFinalPrev || !r1Cur) return null;
+    return { r1Prev, rFinalPrev, r1Cur, prevYear, curYear };
+  }
+
+  summary() {
+    const byType = {};
+    for (const v of this.registry.values()) {
+      byType[v.type] = byType[v.type] || { datasets: 0, rows: 0 };
+      byType[v.type].datasets++;
+      byType[v.type].rows += v.rows.length;
+    }
+    return byType;
+  }
+}
+
+/* ============================================================
+   PredictionEngine
+   - hybrid shift model (avg of historical-shift & percentage-shift)
+   - produces predicted OR/CR for each row of current-year R1
+   ============================================================ */
+class PredictionEngine {
+  constructor(datasetManager) { this.dm = datasetManager; }
+
+  static compositeKey(row) {
+    return `${row.institute.toLowerCase().trim()}|${row.program.toLowerCase().trim()}|${row.quota.toLowerCase().trim()}|${row.seatType.toLowerCase().trim()}|${row.gender.toLowerCase().trim()}`;
+  }
+
+  predictForType(type) {
+    const trio = this.dm.getPredictionTrio(type);
+    if (!trio) return [];
+    const { r1Prev, rFinalPrev, r1Cur } = trio;
+
+    const mapPrev1 = new Map();
+    r1Prev.rows.forEach(r => mapPrev1.set(PredictionEngine.compositeKey(r), r));
+    const mapPrevFinal = new Map();
+    rFinalPrev.rows.forEach(r => mapPrevFinal.set(PredictionEngine.compositeKey(r), r));
+
+    const out = [];
+    r1Cur.rows.forEach(cur => {
+      const key = PredictionEngine.compositeKey(cur);
+      const p1 = mapPrev1.get(key);
+      const pF = mapPrevFinal.get(key);
+
+      let predOR, predCR, confidence;
+      if (p1 && pF) {
+        const shiftOR = pF.or - p1.or;
+        const shiftCR = pF.cr - p1.cr;
+        const mulOR = p1.or > 0 ? pF.or / p1.or : 1;
+        const mulCR = p1.cr > 0 ? pF.cr / p1.cr : 1;
+
+        const sOR = cur.or + shiftOR, sCR = cur.cr + shiftCR;
+        const pctOR = Math.round(cur.or * mulOR), pctCR = Math.round(cur.cr * mulCR);
+
+        predOR = Math.round((sOR + pctOR) / 2);
+        predCR = Math.round((sCR + pctCR) / 2);
+        confidence = 'High';
+      } else {
+        // No historical pair found — fall back to a conservative widening of current R1
+        predOR = cur.or;
+        predCR = Math.round(cur.cr * 1.15);
+        confidence = 'Low';
+      }
+
+      predOR = Math.max(1, predOR);
+      predCR = Math.max(predOR, predCR);
+
+      out.push({
+        instituteType: type,
+        institute: cur.institute,
+        program: cur.program,
+        quota: cur.quota,
+        seatType: cur.seatType,
+        gender: cur.gender,
+        currentOR: cur.or,
+        currentCR: cur.cr,
+        year25R1OR: p1 ? p1.or : null,
+        year25R1CR: p1 ? p1.cr : null,
+        year25FinalOR: pF ? pF.or : null,
+        year25FinalCR: pF ? pF.cr : null,
+        year26R1OR: cur.or,
+        year26R1CR: cur.cr,
+        predictedOR: predOR,
+        predictedCR: predCR,
+        confidence
+      });
+    });
+    return out;
+  }
+
+  predictAll(types) {
+    let all = [];
+    types.forEach(t => { all = all.concat(this.predictForType(t)); });
+    return all;
+  }
+
+  // Builds a full combined record set (all types) with current/previous year OR-CR + prediction,
+  // for the "Complete Combined Dataset" table. Falls back gracefully if a type has no valid trio.
+  buildFullDataset() {
+    const out = [];
+    this.dm.types.forEach(type => {
+      const trio = this.dm.getPredictionTrio(type);
+      if (!trio) return;
+      const { r1Prev, rFinalPrev, r1Cur } = trio;
+
+      const mapPrev1 = new Map();
+      r1Prev.rows.forEach(r => mapPrev1.set(PredictionEngine.compositeKey(r), r));
+      const mapPrevFinal = new Map();
+      rFinalPrev.rows.forEach(r => mapPrevFinal.set(PredictionEngine.compositeKey(r), r));
+
+      r1Cur.rows.forEach(cur => {
+        const key = PredictionEngine.compositeKey(cur);
+        const p1 = mapPrev1.get(key);
+        const pF = mapPrevFinal.get(key);
+
+        let predOR, predCR, confidence;
+        if (p1 && pF) {
+          const shiftOR = pF.or - p1.or;
+          const shiftCR = pF.cr - p1.cr;
+          const mulOR = p1.or > 0 ? pF.or / p1.or : 1;
+          const mulCR = p1.cr > 0 ? pF.cr / p1.cr : 1;
+          const sOR = cur.or + shiftOR, sCR = cur.cr + shiftCR;
+          const pctOR = Math.round(cur.or * mulOR), pctCR = Math.round(cur.cr * mulCR);
+          predOR = Math.round((sOR + pctOR) / 2);
+          predCR = Math.round((sCR + pctCR) / 2);
+          confidence = 'High';
+        } else {
+          predOR = cur.or;
+          predCR = Math.round(cur.cr * 1.15);
+          confidence = 'Low';
+        }
+        predOR = Math.max(1, predOR);
+        predCR = Math.max(predOR, predCR);
+
+        out.push({
+          instituteType: type,
+          institute: cur.institute,
+          program: cur.program,
+          quota: cur.quota,
+          seatType: cur.seatType,
+          gender: cur.gender,
+          year25R1OR: p1 ? p1.or : null,
+          year25R1CR: p1 ? p1.cr : null,
+          year25FinalOR: pF ? pF.or : null,
+          year25FinalCR: pF ? pF.cr : null,
+          year26R1OR: cur.or,
+          year26R1CR: cur.cr,
+          predictedOR: predOR,
+          predictedCR: predCR,
+          confidence
+        });
+      });
+    });
+    return out;
+  }
+}
+
+/* ============================================================
+   FilterEngine
+   - combinable filters + fuzzy universal search
+   - builds simple search index per record
+   ============================================================ */
+class FilterEngine {
+  constructor(records) {
+    this.records = records;
+    this.index = records.map(r => ({
+      r,
+      hay: `${r.instituteType} ${r.institute} ${r.program} ${r.quota} ${r.seatType} ${r.gender}`.toLowerCase()
+    }));
+  }
+
+  static fuzzyMatch(hay, query) {
+    // token-based: every whitespace-separated token must appear as substring (in any order)
+    const tokens = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
+    if (!tokens.length) return true;
+    return tokens.every(t => hay.includes(t));
+  }
+
+  filter({ search, type, quota, program, instituteTypesAllowed }) {
+    return this.index.filter(({ r, hay }) => {
+      if (instituteTypesAllowed && !instituteTypesAllowed.includes(r.instituteType)) return false;
+      if (type && r.instituteType !== type) return false;
+      if (quota && r.quota !== quota) return false;
+      if (program && r.program !== program) return false;
+      if (search && !FilterEngine.fuzzyMatch(hay, search)) return false;
+      return true;
+    }).map(x => x.r);
+  }
+}
+
+/* ============================================================
+   App — UI orchestration
+   ============================================================ */
+const App = {
+  dm: new DatasetManager(),
+  predictions: [],
+  filtered: [],
+  counsellingMode: 'IIT', // 'IIT' or 'JEE'
+  hierarchyFilter: null, // null = all, or 'NIT'/'IIIT'/'GFTI'
+  fullDataset: [],
+  fullFiltered: [],
+  fullPage: 1,
+  fullRowsPerPage: 50,
+
+  async init() {
+    this.setCounsellingModeUI('IIT');
+    this.renderDiscoveryGrid({});
+    const statusEl = document.getElementById('status-engine');
+    statusEl.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span> Scanning for datasets...`;
+    statusEl.className = "text-sm font-semibold text-amber-400 flex items-center gap-1.5 mt-1";
+
+    const found = await this.dm.discoverAndFetch((fname, count, meta) => {
+      this.renderDiscoveryGrid({ [this.dm.key(meta)]: { meta, count, status: 'ok' } }, true);
+    });
+
+    if (found > 0) {
+      statusEl.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span> ${found} dataset(s) auto-loaded`;
+      statusEl.className = "text-xs font-semibold text-emerald-400 flex items-center gap-1.5 mt-1";
+      document.getElementById('upload-panel').classList.add('hidden');
+      this.refreshRegistrySummary();
+      this.rebuildFullDataset();
+    } else {
+      statusEl.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span> Auto-fetch found nothing — upload CSVs or load demo data`;
+      statusEl.className = "text-xs font-semibold text-rose-400 flex items-center gap-1.5 mt-1";
+      this.rebuildFullDataset();
+    }
+    this.renderDiscoveryGrid({});
+  },
+
+  renderDiscoveryGrid(extra, append) {
+    const grid = document.getElementById('discovery-grid');
+    if (!append) grid.innerHTML = '';
+    const types = this.dm.types;
+    if (!append) {
+      grid.innerHTML = types.map(t => {
+        const dsCount = [...this.dm.registry.values()].filter(v => v.type === t).length;
+        const rowCount = [...this.dm.registry.values()].filter(v => v.type === t).reduce((a,v)=>a+v.rows.length,0);
+        return `
+          <div class="p-4 bg-slate-900/60 rounded-xl border border-white/5">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-xs font-bold text-slate-200">${t}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full ${dsCount?'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400':'bg-amber-500/10 border border-amber-500/30 text-amber-300'}">
+                ${dsCount ? dsCount+' file(s)' : 'none found'}
+              </span>
+            </div>
+            <span class="text-[10px] text-slate-400">${rowCount.toLocaleString()} rows registered</span>
+          </div>`;
+      }).join('');
+    }
+  },
+
+  refreshRegistrySummary() {
+    const summary = this.dm.summary();
+    const parts = Object.entries(summary).map(([t,s]) => `${t}: ${s.datasets} file(s)/${s.rows.toLocaleString()} rows`);
+    document.getElementById('registry-summary').textContent = parts.length ? parts.join(' · ') : 'No datasets registered';
+    this.renderDiscoveryGrid({});
+  },
+
+  async handleManualUpload(files) {
+    let okCount = 0;
+    for (const f of files) {
+      const res = await this.dm.registerFile(f);
+      if (res) okCount++;
+    }
+    this.refreshRegistrySummary();
+    this.rebuildFullDataset();
+    const statusEl = document.getElementById('status-engine');
+    if (okCount > 0) {
+      statusEl.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span> ${okCount} file(s) registered manually`;
+      statusEl.className = "text-xs font-semibold text-emerald-400 flex items-center gap-1.5 mt-1";
+      document.getElementById('upload-panel').classList.add('hidden');
+    } else {
+      statusEl.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span> No recognizable filenames (expected &lt;TYPE&gt;&lt;YY&gt;R&lt;ROUND&gt;.csv)`;
+      statusEl.className = "text-xs font-semibold text-rose-400 flex items-center gap-1.5 mt-1";
+    }
+  },
+
+  loadDemoData() {
+    const institutesByType = {
+      IIT: ["Indian Institute of Technology Bombay","Indian Institute of Technology Delhi","Indian Institute of Technology Madras","Indian Institute of Technology Kanpur","Indian Institute of Technology Roorkee"],
+      NIT: ["National Institute of Technology Trichy","National Institute of Technology Surathkal","National Institute of Technology Rourkela","National Institute of Technology Warangal","National Institute of Technology Jamshedpur"],
+      IIIT: ["Indian Institute of Information Technology Allahabad","Indian Institute of Information Technology Bhagalpur","Indian Institute of Information Technology Gwalior","Indian Institute of Information Technology Kota"],
+      GFTI: ["Institute of Chemical Technology Mumbai","Punjab Engineering College Chandigarh","Maharaja Sayajirao University Baroda","Indian Institute of Engineering Science and Technology Shibpur"]
+    };
+    const programs = [
+      "Computer Science and Engineering (4 Years, Bachelor of Technology)",
+      "Electronics and Communication Engineering (4 Years, Bachelor of Technology)",
+      "Electrical Engineering (4 Years, Bachelor of Technology)",
+      "Mechanical Engineering (4 Years, Bachelor of Technology)",
+      "Civil Engineering (4 Years, Bachelor of Technology)",
+      "Chemical Engineering (4 Years, Bachelor of Technology)"
+    ];
+    const seatTypes = ["OPEN","OBC-NCL","SC","ST","EWS"];
+    const genders = ["Gender-Neutral","Female-only (including Female Supernumerary)"];
+
+    this.dm.registry.clear();
+
+    Object.entries(institutesByType).forEach(([type, institutes]) => {
+      const quotas = type === 'IIT' ? ['AI'] : ['AI','HS','OS'];
+      ['25','26'].forEach(year => {
+        const rounds = year === '25' ? [1,6] : [1];
+        rounds.forEach(round => {
+          const rows = [];
+          institutes.forEach((inst, instIdx) => {
+            programs.forEach((prog, progIdx) => {
+              quotas.forEach(quota => {
+                seatTypes.forEach(seat => {
+                  genders.forEach(gender => {
+                    const idxWeight = (instIdx+1)*10 + (progIdx+1);
+                    const categoryMul = seat==='OPEN'?1:seat==='OBC-NCL'?3:seat==='SC'?6:seat==='ST'?10:2;
+                    const genderMul = gender.includes('Female')?1.5:1.0;
+                    const baseOR = Math.round(idxWeight*8*categoryMul*genderMul);
+                    const baseCR = Math.round(baseOR + idxWeight*4*categoryMul*genderMul);
+
+                    let or = baseOR, cr = baseCR;
+                    if (year==='25' && round===6) {
+                      const shift = 0.10 + instIdx*0.025;
+                      or = Math.round(baseOR*(1+shift*0.8));
+                      cr = Math.round(baseCR*(1+shift));
+                    } else if (year==='26') {
+                      const yearShift = (instIdx%2===0?0.04:-0.02);
+                      or = Math.round(baseOR*(1+yearShift));
+                      cr = Math.round(baseCR*(1+yearShift));
+                    }
+                    rows.push({ institute: inst, program: prog, quota, seatType: seat, gender, or, cr });
+                  });
+                });
+              });
+            });
+          });
+          this.dm._register({ type, year: '20'+year, round }, rows);
+        });
+      });
+    });
+
+    document.getElementById('upload-panel').classList.add('hidden');
+    const statusEl = document.getElementById('status-engine');
+    statusEl.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span> Demo dataset loaded (all institute types)`;
+    statusEl.className = "text-xs font-semibold text-emerald-400 flex items-center gap-1.5 mt-1";
+    this.refreshRegistrySummary();
+    this.rebuildFullDataset();
+  },
+
+  setCounsellingMode(mode) {
+    this.counsellingMode = mode;
+    this.setCounsellingModeUI(mode);
+    if (mode !== 'TABLE') this.onCategoryChange();
+  },
+
+  setCounsellingModeUI(mode) {
+    ['IIT','JEE','TABLE'].forEach(m => {
+      const btn = document.getElementById(`btn-mode-${m}`);
+      if (m === mode) btn.className = "px-4 py-2 text-xs font-semibold rounded-lg bg-gradient-to-r from-violet-500 to-cyan-500 text-white shadow-lg shadow-violet-500/30 transition-all";
+      else btn.className = "px-4 py-2 text-xs font-semibold rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 transition-all";
+    });
+
+    const predictPanel = document.getElementById('panel-predict');
+    const tablePanel = document.getElementById('panel-table');
+
+    if (mode === 'TABLE') {
+      predictPanel.classList.add('hidden');
+      tablePanel.classList.remove('hidden');
+      return;
+    }
+    predictPanel.classList.remove('hidden');
+    tablePanel.classList.add('hidden');
+
+    const desc = document.getElementById('mode-description');
+    const homeStateWrap = document.getElementById('wrap-home-state');
+    const hierarchyPanel = document.getElementById('hierarchy-panel');
+
+    if (mode === 'IIT') {
+      desc.innerHTML = `Currently set up for <b>IIT Counselling</b> — provide your category, rank (CRL for OPEN/EWS, category rank for reserved categories), and gender.`;
+      homeStateWrap.classList.add('hidden');
+      hierarchyPanel.classList.add('hidden');
+      this.hierarchyFilter = null;
+    } else {
+      desc.innerHTML = `Currently set up for <b>JEE Main Counselling</b> (NITs / IIITs / GFTIs) — provide your category, rank (CRL for OPEN/EWS, category rank for reserved categories), gender, and home state for Home State quota matching.`;
+      homeStateWrap.classList.remove('hidden');
+      hierarchyPanel.classList.remove('hidden');
+      this.renderHierarchyButtons();
+    }
+  },
+
+  renderHierarchyButtons() {
+    const container = document.getElementById('hierarchy-buttons');
+    const opts = [
+      { key: null, label: 'All (NIT + IIIT + GFTI)' },
+      { key: 'NIT', label: 'NITs only' },
+      { key: 'IIIT', label: 'IIITs only' },
+      { key: 'GFTI', label: 'GFTIs only' }
+    ];
+    container.innerHTML = opts.map(o => {
+      const active = this.hierarchyFilter === o.key;
+      return `<button onclick="App.setHierarchyFilter(${o.key===null?'null':`'${o.key}'`})" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition ${active ? 'bg-gradient-to-r from-violet-500 to-cyan-500 text-white' : 'bg-slate-900/60 border border-white/5 text-slate-300 hover:bg-slate-800/80'}">${o.label}</button>`;
+    }).join('');
+  },
+
+  setHierarchyFilter(key) {
+    this.hierarchyFilter = key;
+    this.renderHierarchyButtons();
+    if (this.predictions.length) this.applyFilters();
+  },
+
+  onCategoryChange() {
+    const cat = document.getElementById('in-category').value;
+    const isGeneral = cat === 'OPEN' || cat === 'OPEN-PwD';
+    const label = document.getElementById('label-crl');
+    const input = document.getElementById('in-crl');
+    if (isGeneral) {
+      label.textContent = 'CRL Rank (Common Rank List)';
+      input.placeholder = 'e.g. 12500';
+    } else {
+      label.textContent = 'Category Rank (as per category-wise rank list)';
+      input.placeholder = 'e.g. 3200';
+    }
+    document.getElementById('wrap-pwd').classList.toggle('hidden', this.counsellingMode !== 'JEE');
+  },
+
+  runPrediction() {
+    const crl = parseInt(document.getElementById('in-crl').value);
+    if (isNaN(crl) || crl <= 0) {
+      alert('Please enter a valid CRL rank.');
+      return;
+    }
+    if (this.dm.registry.size === 0) {
+      alert('No datasets loaded yet. Wait for auto-fetch, upload CSVs, or load demo data.');
+      return;
+    }
+
+    const category = document.getElementById('in-category').value;
+    const gender = document.getElementById('in-gender').value;
+    const baseSeatType = category.replace('-PwD','');
+
+    const types = this.counsellingMode === 'IIT' ? ['IIT'] : ['NIT','IIIT','GFTI'];
+    const engine = new PredictionEngine(this.dm);
+    let all = engine.predictAll(types);
+
+    // Filter to candidate's seat type + gender eligibility
+    all = all.filter(r => {
+      if (r.seatType.toUpperCase() !== baseSeatType.toUpperCase()) return false;
+      if (gender === 'Gender-Neutral' && r.gender !== 'Gender-Neutral') return false;
+      return true;
+    });
+
+    this.predictions = all;
+    this.userRank = crl;
+    this.populateFilterOptions();
+    this.applyFilters();
+  },
+
+  populateFilterOptions() {
+    const types = new Set(), quotas = new Set(), programs = new Set();
+    this.predictions.forEach(r => { types.add(r.instituteType); quotas.add(r.quota); programs.add(r.program); });
+
+    const fill = (id, set, placeholder) => {
+      const el = document.getElementById(id);
+      const prev = el.value;
+      el.innerHTML = `<option value="">${placeholder}</option>` + [...set].sort().map(v=>`<option value="${v}">${v}</option>`).join('');
+      if (set.has(prev)) el.value = prev;
+    };
+    fill('filter-type', types, 'All Types');
+    fill('filter-quota', quotas, 'All Quotas');
+    fill('filter-program', programs, 'All Branches');
+  },
+
+  /* ---------------- Complete Combined Dataset table ---------------- */
+
+  rebuildFullDataset() {
+    if (this.dm.registry.size === 0) {
+      this.fullDataset = [];
+      this.fullFiltered = [];
+      document.getElementById('full-table-container').innerHTML = `<div class="text-center py-16 text-slate-500 text-xs">No datasets loaded yet.</div>`;
+      document.getElementById('full-table-count').textContent = '0 rows';
+      document.getElementById('full-table-showing').textContent = 'Showing 0 to 0 of 0 entries';
+      return;
+    }
+    const engine = new PredictionEngine(this.dm);
+    this.fullDataset = engine.buildFullDataset();
+    this.fullPage = 1;
+    this.populateFullFilterOptions();
+    this.applyFullFilters();
+  },
+
+  populateFullFilterOptions() {
+    const institutes = new Set(), categories = new Set(), quotas = new Set(), genders = new Set();
+    this.fullDataset.forEach(r => {
+      institutes.add(r.institute);
+      categories.add(r.seatType);
+      quotas.add(r.quota);
+      genders.add(r.gender);
+    });
+    const fill = (id, set, placeholder) => {
+      const el = document.getElementById(id);
+      const prev = el.value;
+      el.innerHTML = `<option value="">${placeholder}</option>` + [...set].sort().map(v=>`<option value="${v.replace(/"/g,'&quot;')}">${v}</option>`).join('');
+      if (set.has(prev)) el.value = prev;
+    };
+    fill('full-filter-institute', institutes, 'All Institutes');
+    fill('full-filter-category', categories, 'All Categories');
+    fill('full-filter-quota', quotas, 'All Quotas');
+    fill('full-filter-gender', genders, 'All Genders');
+  },
+
+  setFullRowsPerPage() {
+    this.fullRowsPerPage = parseInt(document.getElementById('full-rows-per-page').value);
+    this.fullPage = 1;
+    this.renderFullTable();
+  },
+
+  fullPrevPage() {
+    if (this.fullPage > 1) { this.fullPage--; this.renderFullTable(); }
+  },
+
+  fullNextPage() {
+    const maxPage = Math.ceil(this.fullFiltered.length / this.fullRowsPerPage);
+    if (this.fullPage < maxPage) { this.fullPage++; this.renderFullTable(); }
+  },
+
+  applyFullFilters() {
+    if (!this.fullDataset.length) return;
+
+    const search = document.getElementById('full-search').value.toLowerCase().trim();
+    const type = document.getElementById('full-filter-type').value;
+    const institute = document.getElementById('full-filter-institute').value;
+    const category = document.getElementById('full-filter-category').value;
+    const quota = document.getElementById('full-filter-quota').value;
+    const gender = document.getElementById('full-filter-gender').value;
+    const sortBy = document.getElementById('full-sort').value;
+
+    let rows = this.fullDataset.filter(r => {
+      if (type && r.instituteType !== type) return false;
+      if (institute && r.institute !== institute) return false;
+      if (category && r.seatType !== category) return false;
+      if (quota && r.quota !== quota) return false;
+      if (gender && r.gender !== gender) return false;
+      if (search) {
+        const hay = `${r.instituteType} ${r.institute} ${r.program} ${r.quota} ${r.seatType} ${r.gender}`.toLowerCase();
+        if (!FilterEngine.fuzzyMatch(hay, search)) return false;
+      }
+      return true;
+    });
+
+    rows.sort((a,b) => {
+      if (sortBy === 'pred-cr-asc') return a.predictedCR - b.predictedCR;
+      if (sortBy === 'pred-cr-desc') return b.predictedCR - a.predictedCR;
+      return a.institute.localeCompare(b.institute) || a.program.localeCompare(b.program);
+    });
+
+    this.fullFiltered = rows;
+    this.fullPage = 1;
+    document.getElementById('full-table-count').textContent = `${rows.length.toLocaleString()} rows`;
+    this.renderFullFilterTags({ type, institute, category, quota, gender });
+    this.renderFullTable();
+  },
+
+  renderFullFilterTags({ type, institute, category, quota, gender }) {
+    const container = document.getElementById('full-filter-tags');
+    const tags = [];
+    if (type) tags.push({ id: 'full-filter-type', label: 'Type: ' + type });
+    if (institute) tags.push({ id: 'full-filter-institute', label: 'Institute: ' + institute });
+    if (category) tags.push({ id: 'full-filter-category', label: 'Category: ' + category });
+    if (quota) tags.push({ id: 'full-filter-quota', label: 'Quota: ' + quota });
+    if (gender) tags.push({ id: 'full-filter-gender', label: 'Gender: ' + gender });
+    container.innerHTML = tags.map(t => `
+      <div class="flex items-center gap-1.5 px-2 py-1 rounded bg-violet-950/50 border border-violet-800/40 text-[10px] text-violet-300 font-semibold">
+        <span class="max-w-[220px] truncate">${t.label}</span>
+        <button onclick="document.getElementById('${t.id}').value='';App.applyFullFilters()" class="hover:text-rose-400 font-bold shrink-0">×</button>
+      </div>`).join('');
+  },
+
+  renderFullTable() {
+    if (!this.fullDataset.length) return;
+    const rows = this.fullFiltered;
+    const total = rows.length;
+    const maxPage = Math.max(1, Math.ceil(total / this.fullRowsPerPage));
+    if (this.fullPage > maxPage) this.fullPage = maxPage;
+    const start = (this.fullPage - 1) * this.fullRowsPerPage;
+    const end = Math.min(start + this.fullRowsPerPage, total);
+    document.getElementById('full-table-showing').textContent = total ? `Showing ${start+1} to ${end} of ${total.toLocaleString()} entries` : 'Showing 0 to 0 of 0 entries';
+    document.getElementById('full-page-number').textContent = this.fullPage;
+
+    const pageRows = rows.slice(start, end);
+    const fmt = v => v === null || v === undefined ? '—' : v.toLocaleString();
+
+    document.getElementById('full-table-container').innerHTML = pageRows.length ? `
+      <table class="w-full text-left border-collapse min-w-[1100px]">
+        <thead>
+          <tr class="bg-slate-950 text-[10px] uppercase tracking-wider text-slate-400 font-bold border-b border-white/5">
+            <th class="p-3">Type</th>
+            <th class="p-3">Institute</th>
+            <th class="p-3">Branch</th>
+            <th class="p-3 text-center">Quota</th>
+            <th class="p-3 text-center">Category</th>
+            <th class="p-3 text-center">Gender</th>
+            <th class="p-3 text-right text-indigo-400">2025 R1 (OR-CR)</th>
+            <th class="p-3 text-right text-purple-400">2025 Final (OR-CR)</th>
+            <th class="p-3 text-right text-emerald-400">2026 R1 (OR-CR)</th>
+            <th class="p-3 text-right text-cyan-400 font-bold">Predicted 2026 (OR-CR)</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800/60 text-xs text-slate-300">
+          ${pageRows.map((r,i) => `
+            <tr class="hover:bg-slate-900/30 transition cursor-pointer" onclick="App.openModalForFullRow(${start+i})">
+              <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">${r.instituteType}</span></td>
+              <td class="p-3 font-semibold text-slate-200 max-w-[220px] truncate" title="${r.institute}">${r.institute}</td>
+              <td class="p-3 text-slate-300 max-w-[220px] truncate" title="${r.program}">${r.program}</td>
+              <td class="p-3 text-center font-mono">${r.quota}</td>
+              <td class="p-3 text-center font-semibold">${r.seatType}</td>
+              <td class="p-3 text-center text-[10px]">${r.gender}</td>
+              <td class="p-3 text-right font-mono text-[11px] text-slate-400">${fmt(r.year25R1OR)} – ${fmt(r.year25R1CR)}</td>
+              <td class="p-3 text-right font-mono text-[11px] text-slate-400">${fmt(r.year25FinalOR)} – ${fmt(r.year25FinalCR)}</td>
+              <td class="p-3 text-right font-mono text-[11px] text-indigo-300">${fmt(r.year26R1OR)} – ${fmt(r.year26R1CR)}</td>
+              <td class="p-3 text-right font-mono font-bold text-cyan-400">${fmt(r.predictedOR)} – ${fmt(r.predictedCR)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    ` : `<div class="text-center py-16 text-slate-500 text-xs">No matching rows.</div>`;
+  },
+
+  openModalForFullRow(indexInPage) {
+    const start = (this.fullPage - 1) * this.fullRowsPerPage;
+    const r = this.fullFiltered[start + indexInPage];
+    if (r) this.openModal(r, null);
+  },
+
+  exportFullTable() {
+    if (!this.fullFiltered.length) return;
+    const headers = ['InstituteType','Institute','Program','Quota','SeatType','Gender',
+      '2025_R1_OR','2025_R1_CR','2025_Final_OR','2025_Final_CR','2026_R1_OR','2026_R1_CR','Predicted_2026_OR','Predicted_2026_CR','Confidence'];
+    const esc = v => v === null || v === undefined ? '' : v;
+    const rows = this.fullFiltered.map(r => [
+      r.instituteType,
+      `"${r.institute.replace(/"/g,'""')}"`,
+      `"${r.program.replace(/"/g,'""')}"`,
+      r.quota, r.seatType, r.gender,
+      esc(r.year25R1OR), esc(r.year25R1CR), esc(r.year25FinalOR), esc(r.year25FinalCR),
+      esc(r.year26R1OR), esc(r.year26R1CR), esc(r.predictedOR), esc(r.predictedCR), r.confidence
+    ]);
+    this.downloadCSV(headers, rows, 'JoSAA_2026_Complete_Dataset.csv');
+  },
+
+  exportPredictions() {
+    if (!this.filtered.length) return;
+    const headers = ['Tier','InstituteType','Institute','Program','Quota','SeatType','Gender','CurrentOR','CurrentCR','PredictedOR','PredictedCR','Confidence'];
+    const rows = this.filtered.map(r => [
+      this.classify(r), r.instituteType,
+      `"${r.institute.replace(/"/g,'""')}"`,
+      `"${r.program.replace(/"/g,'""')}"`,
+      r.quota, r.seatType, r.gender,
+      r.currentOR, r.currentCR, r.predictedOR, r.predictedCR, r.confidence
+    ]);
+    this.downloadCSV(headers, rows, `JoSAA_2026_Predictions_${this.counsellingMode}.csv`);
+  },
+
+  downloadCSV(headers, rows, filename) {
+    const csvContent = "data:text/csv;charset=utf-8,"
+      + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  },
+
+  /* ---------------- Detail Modal ---------------- */
+
+  openModal(record, tier) {
+    const fmt = v => v === null || v === undefined ? 'N/A' : v.toLocaleString();
+    const computedTier = tier || (this.userRank !== undefined ? this.classify({predictedOR: record.predictedOR, predictedCR: record.predictedCR}) : null);
+    const tierColor = { SAFE:'emerald', LIKELY:'violet', AMBITIOUS:'cyan' }[computedTier] || 'slate';
+    const tierBadge = computedTier ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-${tierColor}-500/20 text-${tierColor}-300 border border-${tierColor}-500/40">${computedTier}</span>` : '';
+
+    const cur25R1OR = record.year25R1OR ?? record.currentOR ?? null;
+    const cur25R1CR = record.year25R1CR ?? record.currentCR ?? null;
+    const has25Final = record.year25FinalOR !== undefined;
+
+    document.getElementById('modal-content').innerHTML = `
+      <div class="flex items-start justify-between gap-3 mb-4 pr-6">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">${record.instituteType}</span>
+            ${tierBadge}
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400">Confidence: ${record.confidence}</span>
+          </div>
+          <h3 class="text-base font-bold text-slate-100 leading-snug">${record.institute}</h3>
+          <p class="text-xs text-slate-400 mt-0.5">${record.program}</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2 text-[11px] mb-4">
+        <div class="bg-slate-950/60 rounded-lg p-2 text-center border border-white/5">
+          <span class="text-[9px] uppercase text-slate-500 block">Quota</span>
+          <span class="font-semibold text-slate-200">${record.quota}</span>
+        </div>
+        <div class="bg-slate-950/60 rounded-lg p-2 text-center border border-white/5">
+          <span class="text-[9px] uppercase text-slate-500 block">Category</span>
+          <span class="font-semibold text-slate-200">${record.seatType}</span>
+        </div>
+        <div class="bg-slate-950/60 rounded-lg p-2 text-center border border-white/5">
+          <span class="text-[9px] uppercase text-slate-500 block">Gender</span>
+          <span class="font-semibold text-slate-200 text-[10px]">${record.gender}</span>
+        </div>
+      </div>
+
+      <div class="space-y-2 mb-4">
+        <h4 class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Rank History &amp; Prediction</h4>
+
+        ${has25Final ? `
+        <div class="grid grid-cols-2 gap-3 bg-slate-950/60 rounded-lg p-3 border border-white/5">
+          <div>
+            <span class="text-[9px] uppercase text-slate-500 block mb-0.5">2025 Round 1</span>
+            <span class="font-mono text-slate-300 text-xs">${fmt(record.year25R1OR)} – ${fmt(record.year25R1CR)}</span>
+          </div>
+          <div>
+            <span class="text-[9px] uppercase text-slate-500 block mb-0.5">2025 Final Round</span>
+            <span class="font-mono text-slate-300 text-xs">${fmt(record.year25FinalOR)} – ${fmt(record.year25FinalCR)}</span>
+          </div>
+        </div>` : ''}
+
+        <div class="grid grid-cols-2 gap-3 bg-slate-950/60 rounded-lg p-3 border border-white/5">
+          <div>
+            <span class="text-[9px] uppercase text-slate-500 block mb-0.5">2026 Round 1 (Actual)</span>
+            <span class="font-mono text-indigo-300 text-xs">${fmt(record.year26R1OR ?? record.currentOR)} – ${fmt(record.year26R1CR ?? record.currentCR)}</span>
+          </div>
+          <div>
+            <span class="text-[9px] uppercase text-slate-500 block mb-0.5">Predicted 2026 Final</span>
+            <span class="font-mono text-cyan-400 font-bold text-xs">${fmt(record.predictedOR)} – ${fmt(record.predictedCR)}</span>
+          </div>
+        </div>
+
+        ${this.userRank !== undefined && computedTier ? `
+        <div class="bg-slate-900/40 px-3 py-2 rounded-lg flex justify-between items-center text-[11px] text-slate-400 border border-white/5">
+          <span>Your rank vs predicted closing rank:</span>
+          <span class="font-mono font-bold text-${tierColor}-400">${this.userRank.toLocaleString()} vs ${fmt(record.predictedCR)} (${record.predictedCR - this.userRank >= 0 ? '+' : ''}${(record.predictedCR - this.userRank).toLocaleString()} margin)</span>
+        </div>` : ''}
+      </div>
+
+      <p class="text-[10px] text-slate-500 leading-relaxed">
+        Predictions use a hybrid model averaging the historical-shift and percentage-shift methods between 2025 Round 1 and 2025 Final Round, applied to 2026 Round 1 data.
+        ${record.confidence === 'Low' ? ' Low confidence means no matching 2025 record was found for this combination, so a conservative estimate (15% widening of 2026 R1 closing rank) was used instead.' : ''}
+      </p>
+    `;
+
+    const modal = document.getElementById('detail-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closeModal() {
+    const modal = document.getElementById('detail-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  applyFilters() {
+    if (!this.predictions.length) {
+      document.getElementById('results-container').innerHTML = `
+        <div class="text-center py-16 text-slate-500 text-xs">Enter your rank details above and click "Predict My Colleges".</div>`;
+      document.getElementById('results-count').textContent = '0 matches';
+      return;
+    }
+
+    const search = document.getElementById('filter-search').value;
+    const type = document.getElementById('filter-type').value;
+    const quota = document.getElementById('filter-quota').value;
+    const program = document.getElementById('filter-program').value;
+    const sortBy = document.getElementById('filter-sort').value;
+
+    const allowedTypes = this.counsellingMode === 'JEE' && this.hierarchyFilter ? [this.hierarchyFilter] : null;
+
+    const fe = new FilterEngine(this.predictions);
+    let results = fe.filter({ search, type, quota, program, instituteTypesAllowed: allowedTypes });
+
+    // Only show colleges within plausible reach of user's rank (within 60% buffer above predicted CR, or any safe admit)
+    results = results.filter(r => this.userRank <= r.predictedCR * 1.6);
+
+    // Sort
+    results.sort((a,b) => {
+      if (sortBy === 'cr-asc') return a.predictedCR - b.predictedCR;
+      if (sortBy === 'cr-desc') return b.predictedCR - a.predictedCR;
+      if (sortBy === 'institute') return a.institute.localeCompare(b.institute);
+      return Math.abs(this.userRank - a.predictedCR) - Math.abs(this.userRank - b.predictedCR);
+    });
+
+    this.filtered = results;
+    document.getElementById('results-count').textContent = `${results.length.toLocaleString()} matches`;
+    this.renderFilterTags({ type, quota, program });
+    this.renderResults(results);
+  },
+
+  renderFilterTags({type, quota, program}) {
+    const container = document.getElementById('filter-tags');
+    const tags = [];
+    if (type) tags.push({key:'filter-type', label: 'Type: '+type});
+    if (quota) tags.push({key:'filter-quota', label: 'Quota: '+quota});
+    if (program) tags.push({key:'filter-program', label: 'Branch: '+program});
+    container.innerHTML = tags.map(t => `
+      <div class="flex items-center gap-1.5 px-2 py-1 rounded bg-violet-950/50 border border-violet-800/40 text-[10px] text-violet-300 font-semibold">
+        <span>${t.label}</span>
+        <button onclick="document.getElementById('${t.key}').value='';App.applyFilters()" class="hover:text-rose-400 font-bold">×</button>
+      </div>`).join('');
+  },
+
+  classify(r) {
+    if (this.userRank < r.predictedOR) return 'SAFE';
+    if (this.userRank <= r.predictedCR) return 'LIKELY';
+    return 'AMBITIOUS';
+  },
+
+  renderResults(results) {
+    const container = document.getElementById('results-container');
+    if (!results.length) {
+      container.innerHTML = `<div class="text-center py-16 text-slate-500 text-xs">No matching colleges found for rank ${this.userRank.toLocaleString()}. Try widening filters.</div>`;
+      return;
+    }
+
+    const groups = { SAFE: [], LIKELY: [], AMBITIOUS: [] };
+    results.forEach(r => groups[this.classify(r)].push(r));
+
+    const tierMeta = {
+      SAFE: { color: 'emerald', icon: '✅', desc: 'Your rank is comfortably better than the predicted opening rank.' },
+      LIKELY: { color: 'violet', icon: '🎯', desc: 'Your rank falls within the predicted admission window.' },
+      AMBITIOUS: { color: 'cyan', icon: '🚀', desc: 'Close to the boundary — possible but less certain.' }
+    };
+
+    const forceTable = document.getElementById('filter-tableview').checked;
+
+    container.innerHTML = Object.entries(groups).map(([tier, items]) => {
+      if (!items.length) return '';
+      const meta = tierMeta[tier];
+      return `
+        <details open class="rounded-xl border border-${meta.color}-500/30 bg-${meta.color}-950/10 overflow-hidden">
+          <summary class="cursor-pointer px-4 py-3 flex items-center justify-between bg-${meta.color}-950/20">
+            <span class="text-sm font-bold text-${meta.color}-300">${meta.icon} ${tier} OPTIONS <span class="text-xs font-normal text-slate-400">(${items.length})</span></span>
+            <span class="text-[10px] text-slate-400 hidden sm:inline">${meta.desc}</span>
+          </summary>
+          <div class="p-4">
+            ${forceTable ? this.renderTable(items, tier) : `
+              <div class="hidden md:block">${this.renderTable(items, tier)}</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:hidden">${items.map(r=>this.renderCard(r,tier)).join('')}</div>
+            `}
+          </div>
+        </details>`;
+    }).join('');
+  },
+
+  renderTable(items, tier) {
+    const tierColor = { SAFE:'emerald', LIKELY:'violet', AMBITIOUS:'cyan' }[tier];
+    return `
+      <div class="overflow-x-auto rounded-xl border border-white/5">
+        <table class="w-full text-left border-collapse min-w-[900px]">
+          <thead>
+            <tr class="bg-slate-950 text-[10px] uppercase tracking-wider text-slate-400 font-bold border-b border-white/5">
+              <th class="p-3">Type</th>
+              <th class="p-3">Institute</th>
+              <th class="p-3">Branch</th>
+              <th class="p-3 text-center">Quota</th>
+              <th class="p-3 text-center">Category</th>
+              <th class="p-3 text-center">Gender</th>
+              <th class="p-3 text-right">Predicted OR-CR</th>
+              <th class="p-3 text-center">Confidence</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/60 text-xs text-slate-300">
+            ${items.map(r => `
+              <tr class="hover:bg-slate-900/30 transition cursor-pointer" onclick='App.openModal(${JSON.stringify(r).replace(/'/g,"&#39;")}, "${tier}")'>
+                <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">${r.instituteType}</span></td>
+                <td class="p-3 font-semibold text-slate-200 max-w-[260px] truncate" title="${r.institute}">${r.institute}</td>
+                <td class="p-3 text-slate-300 max-w-[240px] truncate" title="${r.program}">${r.program}</td>
+                <td class="p-3 text-center font-mono">${r.quota}</td>
+                <td class="p-3 text-center font-semibold">${r.seatType}</td>
+                <td class="p-3 text-center text-[10px]">${r.gender}</td>
+                <td class="p-3 text-right font-mono font-bold text-${tierColor}-400">${r.predictedOR.toLocaleString()} – ${r.predictedCR.toLocaleString()}</td>
+                <td class="p-3 text-center text-[10px]">${r.confidence}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  },
+
+  renderCard(r, tier) {
+    const tierColor = { SAFE:'emerald', LIKELY:'violet', AMBITIOUS:'cyan' }[tier];
+    return `
+      <div onclick='App.openModal(${JSON.stringify(r).replace(/'/g,"&#39;")}, "${tier}")' class="p-4 bg-slate-950/60 rounded-xl border border-${tierColor}-500/20 flex flex-col gap-2 cursor-pointer hover:border-${tierColor}-500/50 transition">
+        <div class="flex justify-between items-start gap-2">
+          <span class="font-bold text-slate-100 text-xs leading-snug">${r.institute}</span>
+          <span class="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-800 text-slate-300 shrink-0">${r.instituteType}</span>
+        </div>
+        <span class="text-[11px] text-slate-400 leading-relaxed">${r.program}</span>
+        <div class="grid grid-cols-2 gap-2 text-[10.5px] border-t border-slate-900/60 pt-2">
+          <div><span class="text-[9px] uppercase text-slate-500 block">Quota / Category</span><span class="text-slate-300 font-medium">${r.quota} · ${r.seatType}</span></div>
+          <div class="text-right"><span class="text-[9px] uppercase text-slate-500 block">Predicted OR–CR</span><span class="font-mono font-bold text-${tierColor}-400">${r.predictedOR.toLocaleString()}–${r.predictedCR.toLocaleString()}</span></div>
+        </div>
+        <div class="flex justify-between items-center text-[10px] text-slate-400 bg-slate-900/40 px-2 py-1 rounded">
+          <span>Gender: ${r.gender}</span>
+          <span>Confidence: ${r.confidence}</span>
+        </div>
+      </div>`;
+  }
+};
+
+function setCounsellingMode(m){ App.setCounsellingMode(m); }
+window.onload = () => App.init();
+</script>
+</body>
+</html>
